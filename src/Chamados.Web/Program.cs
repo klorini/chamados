@@ -1,12 +1,21 @@
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 using Chamados.Domain;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Q10 (b): serializar enums como texto, sem modificar a classe Chamado.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 var app = builder.Build();
 
 app.MapGet("/", () => "Chamados.Web em execução");
 
 app.MapGet("/status", () => Enum.GetNames<StatusChamado>());
+
+// Q10 (a): rota de exemplo que devolve um chamado novo.
+app.MapGet("/chamados/exemplo", () => new Chamado("Trocar lâmpada do corredor"));
 
 // Diagnóstico exposto somente em Development:
 // em produção, revelar versão de runtime ajuda um atacante.

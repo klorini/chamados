@@ -14,7 +14,7 @@ dotnet build
 dotnet run --project src/Chamados.Web
 ```
 
-Rotas disponíveis: `/`, `/status` e `/ambiente` (somente em Development).
+Rotas disponíveis: `/`, `/status`, `/chamados/exemplo` e `/ambiente` (somente em Development).
 
 ## Decisões
 
