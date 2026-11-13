@@ -20,3 +20,11 @@ Rotas disponíveis: `/`, `/status` e `/ambiente` (somente em Development).
 
 1. **.NET 10 LTS como alvo.** Suporte até **14/11/2028**, cobrindo todo o curso. O .NET 8 (LTS) e o .NET 9 (STS) perdem suporte em 10/11/2026, e o .NET 11 ainda está em preview.
 2. **Formato `.slnx` para a solução.** É o padrão do `dotnet new sln` no SDK 10: XML curto, sem GUIDs, mais fácil de ler e revisar em merge. Os comandos `dotnet sln` continuam os mesmos.
+
+## Como testar
+
+```bash
+dotnet test
+```
+
+Os testes (xUnit) cobrem o domínio: um chamado novo nasce com status `Aberto` e título em branco lança `ArgumentException`.
