@@ -1,0 +1,31 @@
+@host = http://localhost:5095
+
+### Raiz
+GET {{host}}/
+
+### Status possíveis
+GET {{host}}/status
+
+### Listar todos os chamados
+GET {{host}}/chamados
+
+### Filtrar por status
+GET {{host}}/chamados?status=EmAtendimento
+
+### Filtrar por prioridade mínima e texto
+GET {{host}}/chamados?prioridadeMinima=Alta&texto=SALA
+
+### Estatísticas
+GET {{host}}/chamados/estatisticas
+
+### Obter um chamado (troque o id por um real da listagem)
+GET {{host}}/chamados/00000000-0000-0000-0000-000000000000
+
+### Iniciar atendimento (troque o id por um chamado Aberto)
+POST {{host}}/chamados/00000000-0000-0000-0000-000000000000/atendimento
+Content-Type: application/json
+
+{ "responsavel": "Equipe de manutenção" }
+
+### Ambiente (somente Development)
+GET {{host}}/ambiente
