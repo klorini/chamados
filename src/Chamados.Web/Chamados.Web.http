@@ -29,3 +29,15 @@ Content-Type: application/json
 
 ### Ambiente (somente Development)
 GET {{host}}/ambiente
+
+### Resolver um chamado (troque o id por um EmAtendimento)
+POST {{host}}/chamados/00000000-0000-0000-0000-000000000000/resolucao
+Content-Type: application/json
+
+{ "solucao": "Peça substituída" }
+
+### Cancelar um chamado (troque o id por um Aberto ou EmAtendimento)
+POST {{host}}/chamados/00000000-0000-0000-0000-000000000000/cancelamento
+Content-Type: application/json
+
+{ "motivo": "Aberto em duplicidade" }
