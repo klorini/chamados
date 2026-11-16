@@ -1,43 +1,38 @@
-@host = http://localhost:5095
+# Requisições da API JSON. As páginas (formulários) são testadas no navegador.
+@base = http://localhost:5080
 
-### Raiz
-GET {{host}}/
+### Lista todos, ordenados por prioridade
+GET {{base}}/api/chamados
 
-### Status possíveis
-GET {{host}}/status
-
-### Listar todos os chamados
-GET {{host}}/chamados
-
-### Filtrar por status
-GET {{host}}/chamados?status=EmAtendimento
-
-### Filtrar por prioridade mínima e texto
-GET {{host}}/chamados?prioridadeMinima=Alta&texto=SALA
+### Filtros combinados
+GET {{base}}/api/chamados?status=Aberto&prioridadeMinima=Alta
 
 ### Estatísticas
-GET {{host}}/chamados/estatisticas
+GET {{base}}/api/chamados/estatisticas
 
-### Obter um chamado (troque o id por um real da listagem)
-GET {{host}}/chamados/00000000-0000-0000-0000-000000000000
-
-### Iniciar atendimento (troque o id por um chamado Aberto)
-POST {{host}}/chamados/00000000-0000-0000-0000-000000000000/atendimento
+### Abre um chamado pela API (o mesmo ChamadoServico do formulário)
+POST {{base}}/api/chamados
 Content-Type: application/json
 
-{ "responsavel": "Equipe de manutenção" }
+{
+  "titulo": "Aberto pela API",
+  "prioridade": "Alta"
+}
 
-### Ambiente (somente Development)
-GET {{host}}/ambiente
-
-### Resolver um chamado (troque o id por um EmAtendimento)
-POST {{host}}/chamados/00000000-0000-0000-0000-000000000000/resolucao
+### Prioridade inexistente: o domínio recusa e o filtro responde 400 (Problem Details)
+POST {{base}}/api/chamados
 Content-Type: application/json
 
-{ "solucao": "Peça substituída" }
+{
+  "titulo": "Prioridade inválida",
+  "prioridade": 99
+}
 
-### Cancelar um chamado (troque o id por um Aberto ou EmAtendimento)
-POST {{host}}/chamados/00000000-0000-0000-0000-000000000000/cancelamento
+### Inicia atendimento: copie um Id com status Aberto da listagem
+@id = 00000000-0000-0000-0000-000000000000
+POST {{base}}/api/chamados/{{id}}/atendimento
 Content-Type: application/json
 
-{ "motivo": "Aberto em duplicidade" }
+{
+  "responsavel": "Elétrica"
+}

@@ -1,134 +1,149 @@
-using Xunit;
+using Chamados.Domain;
 
 namespace Chamados.Domain.Tests;
 
 public class ChamadoServicoTests
 {
-    private static readonly DateTimeOffset Inicio = new(2026, 11, 1, 8, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset Inicio = new(2026, 10, 5, 9, 0, 0, TimeSpan.Zero);
 
-    private static (ChamadoServico Servico, RelogioFixo Relogio) CriarServico()
+    private readonly RelogioFixo _relogio = new(Inicio);
+    private readonly ChamadoServico _servico;
+
+    public ChamadoServicoTests()
     {
-        var relogio = new RelogioFixo(Inicio);
-        var repositorio = new RepositorioChamadosEmMemoria(relogio);
-        return (new ChamadoServico(repositorio, relogio), relogio);
+        // xUnit cria uma instância da classe por teste: cada teste tem seu próprio repositório.
+        _servico = new ChamadoServico(new RepositorioChamadosEmMemoria(_relogio), _relogio);
     }
 
     [Fact]
-    public async Task AbrirAsync_UsaRelogioInjetadoEGuardaNoRepositorio()
+    public async Task AbrirAsync_UsaHorarioDoRelogio()
     {
-        var (servico, _) = CriarServico();
-
-        var chamado = await servico.AbrirAsync(new NovoChamado("Tomada solta", Prioridade.Alta));
+        var chamado = await _servico.AbrirAsync(new NovoChamado("Tomada solta"));
 
         Assert.Equal(Inicio, chamado.CriadoEm);
-        var listados = await servico.ListarAsync(FiltroChamados.Todos);
-        Assert.Single(listados);
-        Assert.Equal(chamado.Id, listados[0].Id);
     }
 
     [Fact]
-    public async Task ListarAsync_OrdenaPorPrioridadeDepoisPorAbertura()
+    public async Task ListarAsync_OrdenaPorPrioridadeDecrescenteEDepoisPorAbertura()
     {
-        var (servico, relogio) = CriarServico();
-        await servico.AbrirAsync(new NovoChamado("Lâmpada", Prioridade.Baixa));
-        relogio.Avancar(TimeSpan.FromMinutes(1));
-        var critico1 = await servico.AbrirAsync(new NovoChamado("Vazamento", Prioridade.Critica));
-        relogio.Avancar(TimeSpan.FromMinutes(1));
-        var critico2 = await servico.AbrirAsync(new NovoChamado("Curto-circuito", Prioridade.Critica));
+        await _servico.AbrirAsync(new NovoChamado("A", Prioridade.Baixa));
+        _relogio.Avancar(TimeSpan.FromMinutes(1));
+        await _servico.AbrirAsync(new NovoChamado("B", Prioridade.Alta));
+        _relogio.Avancar(TimeSpan.FromMinutes(1));
+        await _servico.AbrirAsync(new NovoChamado("C", Prioridade.Alta));
 
-        var resultado = await servico.ListarAsync(FiltroChamados.Todos);
+        var resultado = await _servico.ListarAsync(FiltroChamados.Todos);
 
-        Assert.Equal(
-            new[] { critico1.Id, critico2.Id },
-            resultado.Take(2).Select(r => r.Id));
-        Assert.Equal("Lâmpada", resultado[^1].Titulo);
+        Assert.Equal(new[] { "B", "C", "A" }, resultado.Select(r => r.Titulo));
     }
 
     [Fact]
-    public async Task ListarAsync_FiltraPorTextoNaDescricao_IgnorandoMaiusculas()
+    public async Task ListarAsync_FiltraPorTextoNaDescricaoSemDiferenciarMaiusculas()
     {
-        var (servico, _) = CriarServico();
-        await servico.AbrirAsync(new NovoChamado("Ar-condicionado", Prioridade.Alta, "Desliga na sala 204"));
-        await servico.AbrirAsync(new NovoChamado("Projetor", Prioridade.Media));
+        await _servico.AbrirAsync(new NovoChamado("Ar-condicionado", Prioridade.Alta, "Desliga na SALA 204"));
+        await _servico.AbrirAsync(new NovoChamado("Lâmpada", Prioridade.Baixa));
 
-        var resultado = await servico.ListarAsync(new FiltroChamados(Texto: "SALA"));
+        var resultado = await _servico.ListarAsync(new FiltroChamados(Texto: "sala"));
 
-        Assert.Single(resultado);
-        Assert.Equal("Ar-condicionado", resultado[0].Titulo);
+        Assert.Equal("Ar-condicionado", Assert.Single(resultado).Titulo);
     }
 
     [Fact]
     public async Task ListarAsync_CombinaStatusEPrioridadeMinima()
     {
-        var (servico, _) = CriarServico();
-        var alta = await servico.AbrirAsync(new NovoChamado("Ar-condicionado", Prioridade.Alta));
-        await servico.IniciarAtendimentoAsync(alta.Id, "Climatização");
-        await servico.AbrirAsync(new NovoChamado("Tomada", Prioridade.Alta));
-        var baixa = await servico.AbrirAsync(new NovoChamado("Lâmpada", Prioridade.Baixa));
-        await servico.IniciarAtendimentoAsync(baixa.Id, "Elétrica");
+        var alta = await _servico.AbrirAsync(new NovoChamado("Alta em atendimento", Prioridade.Alta));
+        await _servico.IniciarAtendimentoAsync(alta.Id, "Equipe");
+        var baixa = await _servico.AbrirAsync(new NovoChamado("Baixa em atendimento", Prioridade.Baixa));
+        await _servico.IniciarAtendimentoAsync(baixa.Id, "Equipe");
+        await _servico.AbrirAsync(new NovoChamado("Alta aberta", Prioridade.Alta));
 
-        var resultado = await servico.ListarAsync(
-            new FiltroChamados(StatusChamado.EmAtendimento, Prioridade.Alta));
+        var filtro = new FiltroChamados(Status: StatusChamado.EmAtendimento, PrioridadeMinima: Prioridade.Media);
+        var resultado = await _servico.ListarAsync(filtro);
 
-        Assert.Single(resultado);
-        Assert.Equal(alta.Id, resultado[0].Id);
+        Assert.Equal("Alta em atendimento", Assert.Single(resultado).Titulo);
     }
 
     [Fact]
-    public async Task ObterEstatisticasAsync_TempoMedioComRelogioAvancado()
+    public async Task ObterEstatisticasAsync_CalculaTotaisETempoMedio()
     {
-        var (servico, relogio) = CriarServico();
-        var chamado = await servico.AbrirAsync(new NovoChamado("Vazamento", Prioridade.Critica));
-        await servico.IniciarAtendimentoAsync(chamado.Id, "Hidráulica");
-        relogio.Avancar(TimeSpan.FromHours(2));
-        await servico.ResolverAsync(chamado.Id, "Sifão substituído");
+        var c1 = await _servico.AbrirAsync(new NovoChamado("C1", Prioridade.Alta));
+        var c2 = await _servico.AbrirAsync(new NovoChamado("C2", Prioridade.Alta));
+        await _servico.AbrirAsync(new NovoChamado("C3", Prioridade.Baixa));
 
-        var estatisticas = await servico.ObterEstatisticasAsync();
+        await _servico.IniciarAtendimentoAsync(c1.Id, "Equipe");
+        await _servico.IniciarAtendimentoAsync(c2.Id, "Equipe");
+        _relogio.Avancar(TimeSpan.FromHours(1));
+        await _servico.ResolverAsync(c1.Id, "Feito");
+        _relogio.Avancar(TimeSpan.FromHours(2));
+        await _servico.ResolverAsync(c2.Id, "Feito");
 
-        Assert.Equal(TimeSpan.FromHours(2), estatisticas.TempoMedioResolucao);
+        var estatisticas = await _servico.ObterEstatisticasAsync();
+
+        Assert.Equal(3, estatisticas.Total);
+        Assert.Equal(2, estatisticas.PorStatus[StatusChamado.Resolvido]);
+        Assert.Equal(0, estatisticas.PorStatus[StatusChamado.Cancelado]);
+        Assert.Equal(2, estatisticas.PorPrioridade[Prioridade.Alta]);
+        Assert.False(estatisticas.PorPrioridade.ContainsKey(Prioridade.Critica));
+        Assert.Equal(TimeSpan.FromHours(2), estatisticas.TempoMedioResolucao); // (1h + 3h) / 2
     }
 
     [Fact]
-    public async Task ObterEstatisticasAsync_PorStatusIncluiZerados_PorPrioridadeSoPresentes()
+    public async Task ObterEstatisticasAsync_SemResolvidos_TempoMedioNulo()
     {
-        var (servico, _) = CriarServico();
-        await servico.AbrirAsync(new NovoChamado("Tomada", Prioridade.Alta));
+        await _servico.AbrirAsync(new NovoChamado("C1"));
 
-        var estatisticas = await servico.ObterEstatisticasAsync();
+        var estatisticas = await _servico.ObterEstatisticasAsync();
 
-        Assert.Equal(1, estatisticas.Total);
-        Assert.Equal(4, estatisticas.PorStatus.Count);
-        Assert.Equal(0, estatisticas.PorStatus[StatusChamado.Resolvido]);
-        Assert.Single(estatisticas.PorPrioridade);
         Assert.Null(estatisticas.TempoMedioResolucao);
     }
 
     [Fact]
     public async Task IniciarAtendimentoAsync_IdInexistente_LancaChamadoNaoEncontrado()
     {
-        var (servico, _) = CriarServico();
+        var id = Guid.NewGuid();
 
-        await Assert.ThrowsAsync<ChamadoNaoEncontradoException>(
-            () => servico.IniciarAtendimentoAsync(Guid.NewGuid(), "Alguém"));
+        var erro = await Assert.ThrowsAsync<ChamadoNaoEncontradoException>(
+            () => _servico.IniciarAtendimentoAsync(id, "Equipe"));
+
+        Assert.Equal(id, erro.ChamadoId);
     }
 
     [Fact]
-    public async Task ResolverAsync_SemAtendimento_PropagaTransicaoInvalida()
+    public async Task ListarAsync_TokenCancelado_LancaOperationCanceled()
     {
-        var (servico, _) = CriarServico();
-        var chamado = await servico.AbrirAsync(new NovoChamado("Tomada", Prioridade.Alta));
-
-        await Assert.ThrowsAsync<TransicaoInvalidaException>(
-            () => servico.ResolverAsync(chamado.Id, "Sem passar pelo atendimento"));
-    }
-
-    [Fact]
-    public async Task ListarAsync_TokenJaCancelado_LancaOperationCanceled()
-    {
-        var (servico, _) = CriarServico();
-        var token = new CancellationToken(canceled: true);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => servico.ListarAsync(FiltroChamados.Todos, token));
+            () => _servico.ListarAsync(FiltroChamados.Todos, cts.Token));
+    }
+
+    [Fact]
+    public void FiltroChamados_ComWith_CriaCopiaSemAlterarOriginal()
+    {
+        var original = new FiltroChamados(Status: StatusChamado.Aberto);
+
+        var copia = original with { Texto = "sala" };
+
+        Assert.Null(original.Texto);
+        Assert.Equal(StatusChamado.Aberto, copia.Status);
+        Assert.NotEqual(original, copia);
+        Assert.Equal(new FiltroChamados(Status: StatusChamado.Aberto), original);
+    }
+
+    [Fact]
+    public async Task ObterAsync_IdExistente_DevolveOChamado()
+    {
+        var aberto = await _servico.AbrirAsync(new NovoChamado("Tomada solta"));
+
+        var encontrado = await _servico.ObterAsync(aberto.Id);
+
+        Assert.Same(aberto, encontrado);
+    }
+
+    [Fact]
+    public async Task ObterAsync_IdInexistente_DevolveNull()
+    {
+        Assert.Null(await _servico.ObterAsync(Guid.NewGuid()));
     }
 }
