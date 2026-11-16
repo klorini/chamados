@@ -1,7 +1,7 @@
 # Chamados
 
 Sistema de chamados (ordens de serviço) — projeto integrador da formação
-*Desenvolvimento Web e Multiplataforma com .NET*. Estado: Módulo 3.
+*Desenvolvimento Web e Multiplataforma com .NET*. Estado: Módulo 4.
 
 ## Requisitos
 
@@ -21,27 +21,29 @@ dotnet build
 dotnet run --project src/Chamados.Web --launch-profile https
 ```
 
-Portas fixas: http 5080, https 7080. Em Development a base em memória recebe 5 chamados de exemplo.
+Portas fixas: http 5080, https 7080. Em Development a base em memória recebe 12 chamados de exemplo (três páginas de 5 na lista).
 
 ### Páginas (Razor Pages)
 
 | Rota | Página | O que faz |
 | --- | --- | --- |
 | `/` | `Pages/Index` | Painel com totais por status (`ObterEstatisticasAsync`) |
-| `/Chamados?status=&prioridadeMinima=&texto=` | `Pages/Chamados/Index` | Lista com filtros (`ListarAsync`) |
+| `/Chamados?status=&prioridadeMinima=&texto=&ordem=&pagina=` | `Pages/Chamados/Index` | Lista com filtros, ordenação e paginação (`ListarPaginaAsync`) |
 | `/Chamados/Novo` | `Pages/Chamados/Novo` | Formulário de abertura (`AbrirAsync`), validação e Post/Redirect/Get |
 | `/Chamados/Detalhes/{id}` | `Pages/Chamados/Detalhes` | Detalhe, histórico e handlers Iniciar, Resolver, Cancelar |
-| `/Erro` | `Pages/Erro` | Página de erro genérica, usada fora de Development |
+| `/Chamados/Editar/{id}` | `Pages/Chamados/Editar` | Edição com concorrência otimista (`EditarAsync`) |
+| `/Erro`, `/Erro/{código}` | `Pages/Erro` | Erros sem detalhes internos; 404 e 400 amigáveis fora de `/api` |
 
 ### API JSON (movida para `/api` no Módulo 3)
 
 | Rota | Função |
 | --- | --- |
-| `GET /api/chamados?status=&prioridadeMinima=&texto=` | Lista com filtros |
+| `GET /api/chamados?status=&prioridadeMinima=&texto=&ordem=` | Lista com filtros e ordenação |
 | `GET /api/chamados/estatisticas` | Totais e tempo médio de resolução |
 | `GET /api/chamados/{id}` | Um chamado |
 | `POST /api/chamados` | Abre chamado (corpo: `{"titulo": "...", "prioridade": "Alta"}`) |
 | `POST /api/chamados/{id}/atendimento` | Inicia atendimento (corpo: `{"responsavel": "..."}`) |
+| `PUT /api/chamados/{id}` | Edita (corpo com `versaoEsperada`; versão desatualizada → 409) |
 | `GET /api/status`, `GET /api/ambiente` | Herdadas do Módulo 1 (`/api/ambiente` só em Development) |
 
 Erros de domínio na API voltam como Problem Details (RFC 9457): 400, 404 ou 409.
@@ -54,6 +56,10 @@ Valor fora da faixa impede a aplicação de iniciar (`ValidateOnStart`). Para te
 ```powershell
 $env:Simulacao__LatenciaMs = "20000"; dotnet run --project src/Chamados.Web
 ```
+
+### Bibliotecas do lado do cliente
+
+`wwwroot/lib` traz jQuery 3.7.1, jQuery Validation 1.21.0 e jQuery Validation Unobtrusive 4.0.0 (licenças MIT e Apache 2.0, arquivos de licença incluídos), usados só pela validação no cliente. O `libman.json` registra a origem; no Visual Studio, botão direito em `libman.json` › **Restaurar Bibliotecas do Lado do Cliente** baixa de novo.
 
 ## Testar
 
@@ -80,3 +86,7 @@ No Visual Studio: **Teste > Gerenciador de Testes > Executar Todos** (`Ctrl+R, A
 9. **Validação em duas camadas**: Data Annotations no modelo do formulário (mensagem amigável, no servidor) e invariantes no domínio (palavra final). Os limites de tamanho são constantes do `Chamado`, reusadas nos atributos.
 10. **Sem validação no cliente por enquanto**: nenhuma biblioteca JavaScript; o servidor valida sempre. Validação no cliente é conforto, não segurança (Módulo 4).
 11. **API sob `/api`** com `MapGroup` e um filtro único de exceções de domínio, para não disputar a rota `/Chamados` com as páginas.
+12. **Concorrência otimista com número de versão** (Módulo 4): `Chamado.Versao` aumenta a cada alteração; quem edita informa a versão lida. No Módulo 7 o EF Core assume a conferência com um token de concorrência.
+13. **Paginação no serviço, não na página**: `ListarPaginaAsync` devolve `Pagina<T>`. Quando o EF Core chegar, `Skip`/`Take` viram SQL sem mudar as páginas.
+14. **Partial para o que só exibe, View Component para o que busca dados, Tag Helper para marcação repetida**: `_CamposChamado`, `ResumoStatus` e `<selo>`.
+15. **Páginas de status só fora de `/api`**: `UseWhen` cria um ramo do pipeline para que a API continue respondendo JSON.
