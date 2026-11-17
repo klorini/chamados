@@ -1,0 +1,41 @@
+@* Filtro de prioridade mínima da fila. Pensado para @bind-Valor:
+   o pai passa Valor e é avisado por ValorChanged quando o usuário escolhe outro botão. *@
+<div class="filtro-prioridade" role="group" aria-label="Prioridade mínima">
+    @foreach (var opcao in Opcoes)
+    {
+        var escolhido = opcao.Valor == Valor;
+        <button type="button" class="leve" aria-pressed="@(escolhido ? "true" : "false")"
+                @onclick="() => EscolherAsync(opcao.Valor)">
+            @opcao.Rotulo
+        </button>
+    }
+</div>
+
+@code {
+    // null = sem filtro. Os demais são mínimos: "Alta ou mais" mostra Alta e Crítica.
+    private static readonly (string Rotulo, Prioridade? Valor)[] Opcoes =
+    [
+        ("Todas", null),
+        ("Média ou mais", Prioridade.Media),
+        ("Alta ou mais", Prioridade.Alta),
+        ("Crítica", Prioridade.Critica)
+    ];
+
+    [Parameter]
+    public Prioridade? Valor { get; set; }
+
+    /// <summary>Par de Valor exigido pelo @bind-Valor.</summary>
+    [Parameter]
+    public EventCallback<Prioridade?> ValorChanged { get; set; }
+
+    private async Task EscolherAsync(Prioridade? valor)
+    {
+        if (valor == Valor)
+        {
+            return;
+        }
+
+        // O componente não altera o próprio parâmetro: avisa o pai, que é o dono do valor.
+        await ValorChanged.InvokeAsync(valor);
+    }
+}
