@@ -32,20 +32,28 @@
 }
 else
 {
-    <div class="fila">
-        <Coluna Titulo="Abertos" Quantidade="Abertos.Count" TextoVazio="Nenhum chamado aguardando.">
-            @foreach (var chamado in Abertos)
-            {
-                <CartaoChamado @key="chamado.Id" Chamado="chamado" AoConfirmar="ExecutarAsync" />
-            }
-        </Coluna>
+    <div class="@(selecionado is null ? "area-fila" : "area-fila com-painel")">
+        <div class="fila">
+            <Coluna Titulo="Abertos" Quantidade="Abertos.Count" TextoVazio="Nenhum chamado aguardando.">
+                @foreach (var chamado in Abertos)
+                {
+                    <CartaoChamado @key="chamado.Id" Chamado="chamado" AoConfirmar="ExecutarAsync" AoSelecionar="Selecionar" />
+                }
+            </Coluna>
 
-        <Coluna Titulo="Em atendimento" Quantidade="EmAtendimento.Count" TextoVazio="Nenhum chamado em atendimento.">
-            @foreach (var chamado in EmAtendimento)
-            {
-                <CartaoChamado @key="chamado.Id" Chamado="chamado" AoConfirmar="ExecutarAsync" />
-            }
-        </Coluna>
+            <Coluna Titulo="Em atendimento" Quantidade="EmAtendimento.Count" TextoVazio="Nenhum chamado em atendimento.">
+                @foreach (var chamado in EmAtendimento)
+                {
+                    <CartaoChamado @key="chamado.Id" Chamado="chamado" AoConfirmar="ExecutarAsync" AoSelecionar="Selecionar" />
+                }
+            </Coluna>
+        </div>
+
+        @* Atividade C5: o painel continua aberto mesmo que o chamado saia da fila (resolvido ou cancelado). *@
+        @if (selecionado is { } idSelecionado)
+        {
+            <PainelDetalhe ChamadoId="idSelecionado" Revisao="revisao" AoFechar="FecharPainel" />
+        }
     </div>
 }
 
@@ -54,6 +62,10 @@ else
     private IReadOnlyList<ResumoChamado>? chamados;
     private string? texto;
     private Prioridade? prioridadeMinima;
+
+    // Mestre-detalhe: qual chamado está no painel e quantas ações já aconteceram na fila.
+    private Guid? selecionado;
+    private int revisao;
     private string? mensagem;
     private bool mensagemDeErro;
 
@@ -105,8 +117,14 @@ else
             Avisar(ex.Message, erro: true);
         }
 
+        // Qualquer ação, com sucesso ou não, pode ter mudado o chamado: o painel busca de novo.
+        revisao++;
         await CarregarAsync();
     }
+
+    private void Selecionar(Guid id) => selecionado = id;
+
+    private void FecharPainel() => selecionado = null;
 
     private void Avisar(string texto, bool erro)
     {

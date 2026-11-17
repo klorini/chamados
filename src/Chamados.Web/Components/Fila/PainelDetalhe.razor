@@ -1,0 +1,85 @@
+@* Painel de detalhe da fila (mestre-detalhe). Quem escolhe o chamado é a página;
+   o painel só busca e mostra. Revisao muda a cada ação na fila e força nova busca. *@
+@inject ChamadoServico Servico
+
+<aside class="painel-detalhe" aria-live="polite">
+    <header>
+        <h2>Histórico</h2>
+        <button type="button" class="leve" @onclick="() => AoFechar.InvokeAsync()">Fechar</button>
+    </header>
+
+    @if (carregando)
+    {
+        <p class="vazio">Carregando…</p>
+    }
+    else if (chamado is null)
+    {
+        <p class="vazio">Chamado não encontrado. Ele pode ter sido removido.</p>
+    }
+    else
+    {
+        <h3>@chamado.Titulo</h3>
+        <p class="selos">
+            <Selo Valor="chamado.Status" />
+            <Selo Valor="chamado.Prioridade" Prefixo="Prioridade " />
+        </p>
+        <p>@(chamado.Descricao ?? "Sem descrição.")</p>
+
+        @if (chamado.Historico.Count == 0)
+        {
+            <p class="vazio">Nenhuma transição ainda.</p>
+        }
+        else
+        {
+            @* Do mais recente para o mais antigo: a última ação aparece no topo. *@
+            <ol class="historico" reversed>
+                @foreach (var registro in Enumerable.Reverse(chamado.Historico))
+                {
+                    <li>
+                        <time>@registro.Em.DataHora()</time>
+                        @registro.De.Rotulo() → <strong>@registro.Para.Rotulo()</strong>
+                        @if (registro.Observacao is not null)
+                        {
+                            <span class="apoio"> · @registro.Observacao</span>
+                        }
+                    </li>
+                }
+            </ol>
+        }
+    }
+</aside>
+
+@code {
+    private Chamado? chamado;
+    private bool carregando;
+
+    // O que já foi buscado. OnParametersSetAsync roda toda vez que a página renderiza;
+    // só faz sentido ir ao serviço quando o chamado ou a revisão mudaram.
+    private Guid? idCarregado;
+    private int revisaoCarregada;
+
+    [Parameter, EditorRequired]
+    public Guid ChamadoId { get; set; }
+
+    /// <summary>A página aumenta este número depois de cada ação, para o painel buscar de novo.</summary>
+    [Parameter]
+    public int Revisao { get; set; }
+
+    [Parameter]
+    public EventCallback AoFechar { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ChamadoId == idCarregado && Revisao == revisaoCarregada)
+        {
+            return;
+        }
+
+        idCarregado = ChamadoId;
+        revisaoCarregada = Revisao;
+
+        carregando = true;
+        chamado = await Servico.ObterAsync(ChamadoId);
+        carregando = false;
+    }
+}

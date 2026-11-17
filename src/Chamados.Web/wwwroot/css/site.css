@@ -141,3 +141,14 @@ button.leve:hover { background: #f1edff; }
 .filtro-prioridade { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1rem; }
 /* O destaque segue o estado acessível: o mesmo atributo serve à tela e ao leitor de tela. */
 .filtro-prioridade button[aria-pressed="true"] { background: var(--roxo); color: #fff !important; }
+
+/* ---------- Atividade C5 · mestre-detalhe ---------- */
+/* Tela larga: fila e painel lado a lado. Celular: o painel vem depois da fila, no fluxo normal. */
+.area-fila.com-painel { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 900px) {
+    .area-fila.com-painel { grid-template-columns: 1fr; }
+}
+.painel-detalhe { display: grid; gap: .5rem; padding: 1rem; background: var(--papel); border: 1px solid var(--linha); border-radius: 10px; }
+.painel-detalhe > header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.painel-detalhe h2, .painel-detalhe h3, .painel-detalhe p { margin: 0; }
+.painel-detalhe .historico { margin: 0; }
