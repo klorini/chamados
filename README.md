@@ -1,7 +1,7 @@
 # Chamados
 
 Sistema de chamados (ordens de serviço) — projeto integrador da formação
-*Desenvolvimento Web e Multiplataforma com .NET*. Estado: Módulo 4.
+*Desenvolvimento Web e Multiplataforma com .NET*. Estado: Módulo 5.
 
 ## Requisitos
 
@@ -33,6 +33,15 @@ Portas fixas: http 5080, https 7080. Em Development a base em memória recebe 12
 | `/Chamados/Detalhes/{id}` | `Pages/Chamados/Detalhes` | Detalhe, histórico e handlers Iniciar, Resolver, Cancelar |
 | `/Chamados/Editar/{id}` | `Pages/Chamados/Editar` | Edição com concorrência otimista (`EditarAsync`) |
 | `/Erro`, `/Erro/{código}` | `Pages/Erro` | Erros sem detalhes internos; 404 e 400 amigáveis fora de `/api` |
+
+### Páginas Blazor (componentes Razor, Módulo 5)
+
+| Rota | Componente | O que faz |
+| --- | --- | --- |
+| `/atendimento` | `Components/Pages/Atendimento.razor` | Fila interativa (InteractiveServer): busca, iniciar, resolver e cancelar sem recarregar |
+| `/modos` | `Components/Pages/Modos.razor` | O mesmo `Contador` renderizado de forma estática e interativa, lado a lado |
+
+Razor Pages e Blazor convivem na mesma aplicação: `MapRazorPages()` e `MapRazorComponents<App>()` no `Program.cs`, o mesmo `site.css` e o mesmo `ChamadoServico`.
 
 ### API JSON (movida para `/api` no Módulo 3)
 
@@ -90,3 +99,6 @@ No Visual Studio: **Teste > Gerenciador de Testes > Executar Todos** (`Ctrl+R, A
 13. **Paginação no serviço, não na página**: `ListarPaginaAsync` devolve `Pagina<T>`. Quando o EF Core chegar, `Skip`/`Take` viram SQL sem mudar as páginas.
 14. **Partial para o que só exibe, View Component para o que busca dados, Tag Helper para marcação repetida**: `_CamposChamado`, `ResumoStatus` e `<selo>`.
 15. **Páginas de status só fora de `/api`**: `UseWhen` cria um ramo do pipeline para que a API continue respondendo JSON.
+16. **Blazor no mesmo projeto Web** (Módulo 5): Razor Pages ficam com os formulários de cadastro; a fila de atendimento, que muda o tempo todo, vira um componente interativo no servidor (`InteractiveServer`). Nenhum projeto novo.
+17. **Interatividade por página, não global**: só `/atendimento` declara `@rendermode InteractiveServer`. O resto continua estático, sem conexão aberta com o servidor.
+18. **Componente pede, página executa**: `CartaoChamado` só avisa a página por `EventCallback<PedidoTransicao>`; quem chama o `ChamadoServico` e trata as exceções é `Atendimento.razor`.
