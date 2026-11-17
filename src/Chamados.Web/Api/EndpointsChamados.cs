@@ -42,8 +42,15 @@ public static class EndpointsChamados
                 ChamadoServico servico, CancellationToken cancellationToken)
             => ResumoChamado.De(await servico.IniciarAtendimentoAsync(id, requisicao.Responsavel, cancellationToken)));
 
+        // Reabertura (atividade C2). Mesma regra: 404, 409 e 400 vêm do filtro, não daqui.
+        api.MapPost("/{id:guid}/reabertura", async (Guid id, ReabrirRequest requisicao,
+                ChamadoServico servico, CancellationToken cancellationToken)
+            => ResumoChamado.De(await servico.ReabrirAsync(id, requisicao.Motivo, cancellationToken)));
+
         return api;
     }
 }
 
 public sealed record IniciarAtendimentoRequest(string Responsavel);
+
+public sealed record ReabrirRequest(string Motivo);

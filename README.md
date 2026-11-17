@@ -53,6 +53,7 @@ Razor Pages e Blazor convivem na mesma aplicação: `MapRazorPages()` e `MapRazo
 | `POST /api/chamados` | Abre chamado (corpo: `{"titulo": "...", "prioridade": "Alta"}`) |
 | `POST /api/chamados/{id}/atendimento` | Inicia atendimento (corpo: `{"responsavel": "..."}`) |
 | `PUT /api/chamados/{id}` | Edita (corpo com `versaoEsperada`; versão desatualizada → 409) |
+| `POST /api/chamados/{id}/reabertura` | Reabre um resolvido em até 7 dias (corpo: `{"motivo": "..."}`; fora do prazo → 409) |
 | `GET /api/status`, `GET /api/ambiente` | Herdadas do Módulo 1 (`/api/ambiente` só em Development) |
 
 Erros de domínio na API voltam como Problem Details (RFC 9457): 400, 404 ou 409.

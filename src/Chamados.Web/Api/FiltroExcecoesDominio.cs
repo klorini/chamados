@@ -29,6 +29,12 @@ public sealed class FiltroExcecoesDominio : IEndpointFilter
             return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict,
                 title: "Chamado alterado por outra pessoa");
         }
+        catch (PrazoReaberturaExpiradoException ex)
+        {
+            return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict,
+                title: "Prazo de reabertura encerrado",
+                extensions: new Dictionary<string, object?> { ["limite"] = ex.Limite });
+        }
         catch (ChamadoEncerradoException ex)
         {
             return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict,

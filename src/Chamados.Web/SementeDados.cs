@@ -47,5 +47,15 @@ public static class SementeDados
         await servico.AbrirAsync(
             new NovoChamado("Ar-condicionado da biblioteca pingando", Prioridade.Alta, "Goteira sobre as mesas"),
             cancellationToken);
+
+        // Atividade C2: um chamado resolvido há 9 dias, fora do prazo de reabertura (7 dias).
+        // O serviço sempre usa a hora atual do relógio, então este entra direto pelo repositório,
+        // com datas no passado. As transições passam pelos métodos do Chamado, como sempre.
+        var repositorio = escopo.ServiceProvider.GetRequiredService<IChamadoRepositorio>();
+        var agora = escopo.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
+        var fechadura = new Chamado("Fechadura do almoxarifado emperrando", Prioridade.Media, criadoEm: agora.AddDays(-10));
+        fechadura.IniciarAtendimento("Manutenção", agora.AddDays(-10).AddHours(2));
+        fechadura.Resolver("Fechadura lubrificada", agora.AddDays(-9));
+        await repositorio.AdicionarAsync(fechadura, cancellationToken);
     }
 }

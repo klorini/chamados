@@ -53,3 +53,56 @@ Content-Type: application/json
 }
 
 ### Repita o PUT acima sem mudar @versao: a segunda resposta é 409 (versão desatualizada)
+
+### =================== Atividade C2 · Reabertura ===================
+### Passo 0: liste os resolvidos e copie os Ids para as variáveis abaixo.
+### "Vazamento na copa" foi resolvido agora (dentro do prazo);
+### "Fechadura do almoxarifado emperrando" foi resolvido há 9 dias (prazo encerrado).
+GET {{base}}/api/chamados?status=Resolvido
+
+### Copie também o Id de um chamado Aberto (por exemplo, "Tomada solta na recepção").
+GET {{base}}/api/chamados?status=Aberto
+
+### 200: resolvido dentro do prazo volta com "status": "Aberto"
+@idResolvido = 00000000-0000-0000-0000-000000000000
+POST {{base}}/api/chamados/{{idResolvido}}/reabertura
+Content-Type: application/json
+
+{
+  "motivo": "O vazamento voltou"
+}
+
+### 404: Id inexistente
+POST {{base}}/api/chamados/00000000-0000-0000-0000-000000000000/reabertura
+Content-Type: application/json
+
+{
+  "motivo": "Problema voltou"
+}
+
+### 409 (Transição de status inválida): o chamado não está resolvido
+### (reenviar a primeira requisição também dá 409: o chamado já foi reaberto)
+@idAberto = 00000000-0000-0000-0000-000000000000
+POST {{base}}/api/chamados/{{idAberto}}/reabertura
+Content-Type: application/json
+
+{
+  "motivo": "Problema voltou"
+}
+
+### 409 com título próprio ("Prazo de reabertura encerrado") e o limite no Problem Details
+@idExpirado = 00000000-0000-0000-0000-000000000000
+POST {{base}}/api/chamados/{{idExpirado}}/reabertura
+Content-Type: application/json
+
+{
+  "motivo": "Emperrou de novo"
+}
+
+### 400: motivo em branco (o domínio valida antes de olhar o status)
+POST {{base}}/api/chamados/{{idResolvido}}/reabertura
+Content-Type: application/json
+
+{
+  "motivo": "   "
+}
