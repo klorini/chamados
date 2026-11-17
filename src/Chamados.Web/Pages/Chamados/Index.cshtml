@@ -46,7 +46,7 @@ else
 
     <table class="tabela">
         <thead>
-            <tr><th>Título</th><th>Prioridade</th><th>Status</th><th>Responsável</th><th>Aberto em</th></tr>
+            <tr><th>Título</th><th>Prioridade</th><th>Status</th><th>Prazo</th><th>Responsável</th><th>Aberto em</th></tr>
         </thead>
         <tbody>
             @foreach (var chamado in pagina.Itens)
@@ -55,6 +55,8 @@ else
                     <td><a asp-page="./Detalhes" asp-route-id="@chamado.Id">@chamado.Titulo</a></td>
                     <td><selo valor="@chamado.Prioridade" /></td>
                     <td><selo valor="@chamado.Status" /></td>
+                    @* Atividade C3: vazio para resolvidos e cancelados (o Tag Helper suprime a saída). *@
+                    <td><prazo criado-em="@chamado.CriadoEm" prioridade="@chamado.Prioridade" status="@chamado.Status" /></td>
                     <td>@(chamado.Responsavel ?? "—")</td>
                     <td>@chamado.CriadoEm.DataHora()</td>
                 </tr>
