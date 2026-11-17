@@ -215,4 +215,92 @@ public class ChamadoTests
 
         Assert.Equal(2, chamado.Versao);
     }
+
+    // --- Atividade C1: reabertura ---
+
+    private static Chamado ChamadoResolvido(DateTimeOffset resolvidoEm)
+    {
+        var chamado = new Chamado("Tomada solta", criadoEm: Abertura);
+        chamado.IniciarAtendimento("Elétrica", Abertura.AddMinutes(10));
+        chamado.Resolver("Tomada fixada", resolvidoEm);
+        return chamado;
+    }
+
+    [Fact]
+    public void Reabrir_DentroDoPrazo_VoltaParaAbertoELimpaCampos()
+    {
+        var resolvidoEm = Abertura.AddHours(2);
+        var chamado = ChamadoResolvido(resolvidoEm);
+
+        chamado.Reabrir("  Soltou de novo  ", resolvidoEm.AddDays(3));
+
+        Assert.Equal(StatusChamado.Aberto, chamado.Status);
+        Assert.Null(chamado.Responsavel);
+        Assert.Null(chamado.Solucao);
+        Assert.Null(chamado.EncerradoEm);
+        Assert.Equal(4, chamado.Versao);
+
+        var registro = chamado.Historico[^1];
+        Assert.Equal(StatusChamado.Resolvido, registro.De);
+        Assert.Equal(StatusChamado.Aberto, registro.Para);
+        Assert.Equal("Soltou de novo", registro.Observacao);
+    }
+
+    [Fact]
+    public void Reabrir_ExatamenteNoLimite_Reabre()
+    {
+        var resolvidoEm = Abertura.AddHours(2);
+        var chamado = ChamadoResolvido(resolvidoEm);
+
+        chamado.Reabrir("Soltou de novo", resolvidoEm + Chamado.PrazoReabertura);
+
+        Assert.Equal(StatusChamado.Aberto, chamado.Status);
+    }
+
+    [Fact]
+    public void Reabrir_DepoisDoPrazo_LancaPrazoExpiradoSemAlterarNada()
+    {
+        var resolvidoEm = Abertura.AddHours(2);
+        var chamado = ChamadoResolvido(resolvidoEm);
+
+        var erro = Assert.Throws<PrazoReaberturaExpiradoException>(
+            () => chamado.Reabrir("Soltou de novo", resolvidoEm.AddDays(7).AddMinutes(1)));
+
+        Assert.Equal(resolvidoEm + Chamado.PrazoReabertura, erro.Limite);
+        Assert.Equal(StatusChamado.Resolvido, chamado.Status);
+        Assert.Equal("Tomada fixada", chamado.Solucao);
+        Assert.Equal(3, chamado.Versao);
+        Assert.Equal(2, chamado.Historico.Count);
+    }
+
+    [Theory]
+    [InlineData(StatusChamado.Aberto)]
+    [InlineData(StatusChamado.Cancelado)]
+    public void Reabrir_ChamadoNaoResolvido_LancaTransicaoInvalida(StatusChamado statusInicial)
+    {
+        var chamado = new Chamado("Tomada solta", criadoEm: Abertura);
+        if (statusInicial == StatusChamado.Cancelado)
+        {
+            chamado.Cancelar("Aberto em duplicidade", Abertura.AddHours(1));
+        }
+
+        var erro = Assert.Throws<TransicaoInvalidaException>(
+            () => chamado.Reabrir("Soltou de novo", Abertura.AddHours(2)));
+
+        Assert.Equal(statusInicial, erro.Atual);
+        Assert.Equal(StatusChamado.Aberto, erro.Pretendido);
+        Assert.Equal(statusInicial, chamado.Status);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Reabrir_MotivoEmBranco_LancaArgumentException(string motivo)
+    {
+        var resolvidoEm = Abertura.AddHours(2);
+        var chamado = ChamadoResolvido(resolvidoEm);
+
+        Assert.Throws<ArgumentException>(() => chamado.Reabrir(motivo, resolvidoEm.AddDays(1)));
+        Assert.Equal(StatusChamado.Resolvido, chamado.Status);
+    }
 }

@@ -12,6 +12,10 @@ public sealed class Chamado
     public const int TamanhoMaximoTitulo = 120;
     public const int TamanhoMaximoDescricao = 2000;
 
+    /// <summary>Quanto tempo depois de resolvido um chamado ainda pode ser reaberto.</summary>
+    /// <remarks>TimeSpan não pode ser const em C#; static readonly cumpre o mesmo papel.</remarks>
+    public static readonly TimeSpan PrazoReabertura = TimeSpan.FromDays(7);
+
     private readonly List<RegistroHistorico> _historico = [];
 
     public Chamado(
@@ -105,6 +109,33 @@ public sealed class Chamado
         EncerradoEm = em;
     }
 
+    /// <summary>
+    /// Devolve à fila um chamado resolvido há no máximo <see cref="PrazoReabertura"/>.
+    /// De qualquer outro status, a tabela de transições recusa (TransicaoInvalidaException).
+    /// </summary>
+    public void Reabrir(string motivo, DateTimeOffset em)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(motivo);
+
+        // O prazo é conferido antes de qualquer alteração: expirado, nada no chamado muda.
+        if (Status == StatusChamado.Resolvido && EncerradoEm is { } resolvidoEm)
+        {
+            var limite = resolvidoEm + PrazoReabertura;
+            if (em > limite)
+            {
+                throw new PrazoReaberturaExpiradoException(Id, limite);
+            }
+        }
+
+        // MudarStatus valida a transição, registra o motivo no histórico e aumenta a versão.
+        MudarStatus(StatusChamado.Aberto, em, motivo.Trim());
+
+        // Aberto de novo: sem responsável, sem solução e sem encerramento (o histórico guarda o passado).
+        Responsavel = null;
+        Solucao = null;
+        EncerradoEm = null;
+    }
+
     private void MudarStatus(StatusChamado novo, DateTimeOffset em, string? observacao)
     {
         if (!TransicaoPermitida(Status, novo))
@@ -159,6 +190,7 @@ public sealed class Chamado
         (StatusChamado.Aberto, StatusChamado.EmAtendimento) => true,
         (StatusChamado.EmAtendimento, StatusChamado.Resolvido) => true,
         (StatusChamado.Aberto or StatusChamado.EmAtendimento, StatusChamado.Cancelado) => true,
+        (StatusChamado.Resolvido, StatusChamado.Aberto) => true,
         _ => false
     };
 }
